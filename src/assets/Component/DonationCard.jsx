@@ -1,15 +1,14 @@
-function DonationCard({ donation }) {
+export default function DonationCard({ donation }) {
   return (
-    <div className="card">
-      <h3>Donation #{donation.id}</h3>
+    <article className="data-card">
+      <span className="eyebrow">
+        {donation.donor_code_snapshot || "Donation"}
+      </span>
+
+      <h3>{donation.donor_name_snapshot || "Donor unavailable"}</h3>
 
       <p>
-        <strong>Donor:</strong>{" "}
-        {donation.donors?.name || `Donor ID: ${donation.donor_id}`}
-      </p>
-
-      <p>
-        <strong>Amount:</strong> ₹{donation.amount}
+        <strong>Amount:</strong> ₹{Number(donation.amount).toFixed(2)}
       </p>
 
       <p>
@@ -19,8 +18,6 @@ function DonationCard({ donation }) {
       <p>
         <strong>Date:</strong> {donation.donation_date}
       </p>
-    </div>
+    </article>
   );
 }
-
-export default DonationCard;

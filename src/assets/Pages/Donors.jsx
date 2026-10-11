@@ -1,77 +1,105 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../supabase";
-import DonorCard from "../Component/DonarCard";
 
-function Donors() {
+export default function Donors() {
   const [donors, setDonors] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchDonors = async () => {
-    const { data, error } = await supabase
+  const fetchDonors = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    const { data, error: queryError } = await supabase
       .from("donors")
-      .select("*")
-      .order("id", { ascending: false });
+      .select("id, donor_code, name, email, phone, address, created_at")
+      .order("created_at", { ascending: false });
 
-    if (error) {
-      alert(error.message);
+    if (queryError) {
+      setError(queryError.message);
     } else {
       setDonors(data || []);
     }
 
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     fetchDonors();
-  }, []);
+  }, [fetchDonors]);
 
-  const handleDelete = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this donor?"
-    );
+  async function deleteDonor(donor) {
+    if (!window.confirm(`Delete donor ${donor.name}?`)) return;
 
-    if (!confirmDelete) {
+    const { error: deleteError } = await supabase
+      .from("donors")
+      .delete()
+      .eq("id", donor.id);
+
+    if (deleteError) {
+      setError(deleteError.message);
       return;
     }
 
-    const { error } = await supabase
-      .from("donors")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      alert(error.message);
-    } else {
-      alert("Donor deleted successfully.");
-      fetchDonors();
-    }
-  };
-
-  if (loading) {
-    return <h2 className="center">Loading donors...</h2>;
+    fetchDonors();
   }
 
   return (
-    <div className="page">
-      <h2>Registered Donors</h2>
+    <section className="page">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">ADMINISTRATION</span>
+          <h1>Donor directory</h1>
+          <p>Review and manage registered donors.</p>
+        </div>
 
-      {donors.length === 0 ? (
-        <p className="center">
-          No donors registered yet.
-        </p>
-      ) : (
-        <div className="card-grid">
-          {donors.map((donor) => (
-            <DonorCard
-              key={donor.id}
-              donor={donor}
-              onDelete={handleDelete}
-            />
-          ))}
+        <button className="button" onClick={fetchDonors}>
+          Refresh
+        </button>
+      </div>
+
+      {loading && <p>Loading donors...</p>}
+      {error && <p className="error-message">{error}</p>}
+
+      {!loading && !error && donors.length === 0 && (
+        <div className="empty-state">No donors registered yet.</div>
+      )}
+
+      {!loading && donors.length > 0 && (
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Donor code</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Address</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {donors.map((donor) => (
+                <tr key={donor.id}>
+                  <td>{donor.donor_code}</td>
+                  <td>{donor.name}</td>
+                  <td>{donor.email}</td>
+                  <td>{donor.phone}</td>
+                  <td>{donor.address}</td>
+                  <td>
+                    <button
+                      className="danger-button"
+                      onClick={() => deleteDonor(donor)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }
-
-export default Donors;

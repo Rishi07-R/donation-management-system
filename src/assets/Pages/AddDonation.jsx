@@ -1,183 +1,159 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { supabase } from "../../supabase";
 
-function AddDonation() {
-  const navigate = useNavigate();
-
+export default function AddDonation() {
   const [donors, setDonors] = useState([]);
+  const [loadingDonors, setLoadingDonors] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     donor_id: "",
     amount: "",
     purpose: "",
-    donation_date: ""
+    donation_date: new Date().toISOString().slice(0, 10)
   });
 
-  const [loading, setLoading] = useState(false);
-
-  // Get donors from Supabase
   useEffect(() => {
-    fetchDonors();
+    async function loadDonors() {
+      const { data, error: queryError } = await supabase
+        .from("donors")
+        .select("id, donor_code, name")
+        .order("name");
+
+      if (queryError) setError(queryError.message);
+      else setDonors(data || []);
+
+      setLoadingDonors(false);
+    }
+
+    loadDonors();
   }, []);
 
-  const fetchDonors = async () => {
-    const { data, error } = await supabase
-      .from("donors")
-      .select("id, name")
-      .order("name", { ascending: true });
+  function handleChange(event) {
+    setForm({ ...form, [event.target.name]: event.target.value });
+  }
 
-    if (error) {
-      alert("Error loading donors: " + error.message);
-    } else {
-      setDonors(data || []);
-    }
-  };
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setMessage("");
+    setError("");
 
-  // Handle input
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  // Add donation
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (
-      !formData.donor_id ||
-      !formData.amount ||
-      !formData.purpose ||
-      !formData.donation_date
-    ) {
-      alert("Please fill all fields");
+    if (!form.donor_id || Number(form.amount) <= 0 || !form.purpose.trim()) {
+      setError("Select a donor and enter a valid amount and purpose.");
       return;
     }
 
-    if (Number(formData.amount) <= 0) {
-      alert("Amount must be greater than 0");
-      return;
-    }
+    setSubmitting(true);
 
-    try {
-      setLoading(true);
-
-      const { error } = await supabase
-        .from("donations")
-        .insert([
-          {
-            donor_id: Number(formData.donor_id),
-            amount: Number(formData.amount),
-            purpose: formData.purpose,
-            donation_date: formData.donation_date
-          }
-        ]);
-
-      if (error) {
-        throw error;
-      }
-
-      alert("Donation added successfully!");
-
-      setFormData({
-        donor_id: "",
-        amount: "",
-        purpose: "",
-        donation_date: ""
+    const { error: insertError } = await supabase
+      .from("donations")
+      .insert({
+        donor_id: form.donor_id,
+        amount: Number(form.amount),
+        purpose: form.purpose.trim(),
+        donation_date: form.donation_date
       });
 
-      navigate("/donations");
+    setSubmitting(false);
 
-    } catch (error) {
-      alert("Error adding donation: " + error.message);
-    } finally {
-      setLoading(false);
+    if (insertError) {
+      setError(insertError.message);
+      return;
     }
-  };
+
+    setMessage("Donation recorded successfully.");
+    setForm({
+      donor_id: "",
+      amount: "",
+      purpose: "",
+      donation_date: new Date().toISOString().slice(0, 10)
+    });
+  }
 
   return (
-    <div className="form-container">
+    <section className="form-page">
+      <div className="form-intro">
+        <span className="eyebrow">DONATION MANAGEMENT</span>
+        <h1>Record a donation</h1>
+        <p>Add a contribution to a registered donor.</p>
+      </div>
 
-      <h2>Add Donation</h2>
-
-      {donors.length === 0 ? (
-        <div>
-          <p>No donors found.</p>
-
-          <button onClick={() => navigate("/register")}>
-            Register Donor First
-          </button>
-        </div>
-      ) : (
-
-        <form onSubmit={handleSubmit}>
-
-          {/* Donor */}
-          <label>Select Donor</label>
-
+      <form className="form-card" onSubmit={handleSubmit}>
+        <label>
+          Select donor
           <select
             name="donor_id"
-            value={formData.donor_id}
+            value={form.donor_id}
             onChange={handleChange}
+            required
+            disabled={loadingDonors}
           >
             <option value="">
-              -- Select Donor --
+              {loadingDonors ? "Loading donors..." : "Choose a donor"}
             </option>
 
             {donors.map((donor) => (
-              <option
-                key={donor.id}
-                value={donor.id}
-              >
-                {donor.name}
+              <option key={donor.id} value={donor.id}>
+                {donor.donor_code} — {donor.name}
               </option>
             ))}
           </select>
+        </label>
 
-          {/* Amount */}
-          <label>Donation Amount</label>
-
+        <label>
+          Donation amount (₹)
           <input
             type="number"
             name="amount"
-            placeholder="Enter donation amount"
-            min="1"
-            value={formData.amount}
+            value={form.amount}
             onChange={handleChange}
+            min="0.01"
+            step="0.01"
+            required
           />
+        </label>
 
-          {/* Purpose */}
-          <label>Purpose</label>
-
+        <label>
+          Purpose
           <input
-            type="text"
             name="purpose"
-            placeholder="Example: Education"
-            value={formData.purpose}
+            value={form.purpose}
             onChange={handleChange}
+            maxLength="500"
+            required
+            placeholder="Education, food, medical support..."
           />
+        </label>
 
-          {/* Date */}
-          <label>Donation Date</label>
-
+        <label>
+          Donation date
           <input
             type="date"
             name="donation_date"
-            value={formData.donation_date}
+            value={form.donation_date}
             onChange={handleChange}
+            required
           />
+        </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Adding..." : "Add Donation"}
-          </button>
+        {message && <p className="success-message">{message}</p>}
+        {error && <p className="error-message">{error}</p>}
 
-        </form>
-      )}
+        <button
+          className="button full-button"
+          disabled={submitting || loadingDonors || donors.length === 0}
+        >
+          {submitting ? "Saving..." : "Save Donation"}
+        </button>
 
-    </div>
+        {!loadingDonors && donors.length === 0 && (
+          <p className="form-note">
+            Register a donor before recording a donation.
+          </p>
+        )}
+      </form>
+    </section>
   );
 }
-
-export default AddDonation;

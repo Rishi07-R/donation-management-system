@@ -1,59 +1,45 @@
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-
+import { AuthProvider } from "./auth";
 import Navbar from "./assets/Component/Navbar";
-
 import Home from "./assets/Pages/Home";
 import RegisterDonor from "./assets/Pages/RegisterDonor";
+import AdminLogin from "./assets/Pages/AdminLogin";
 import Donors from "./assets/Pages/Donors";
 import AddDonation from "./assets/Pages/AddDonation";
 import Donations from "./assets/Pages/Donations";
 import Dashboard from "./assets/Pages/Dashboard";
-
+import PublicDonate from "./assets/Pages/PublicDonate";
+import ProtectedRoute from "./ProtectedRoute";
 import "./App.css";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
+      <AuthProvider>
+        <Navbar />
 
-      <Navbar />
+        <main className="main-content">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/register" element={<RegisterDonor />} />
+            <Route path="/donate" element={<PublicDonate />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
 
-      <main className="main-content">
+            <Route element={<ProtectedRoute />}>
+              <Route path="/donors" element={<Donors />} />
+              <Route path="/admin/add-donation" element={<AddDonation />} />
+              <Route path="/donations" element={<Donations />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+            </Route>
 
-        <Routes>
-
-          <Route path="/" element={<Home />} />
-
-          <Route
-            path="/register"
-            element={<RegisterDonor />}
-          />
-
-          <Route
-            path="/donors"
-            element={<Donors />}
-          />
-
-          <Route
-            path="/donate"
-            element={<AddDonation />}
-          />
-
-          <Route
-            path="/donations"
-            element={<Donations />}
-          />
-
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
-
-        </Routes>
-
-      </main>
-
+            <Route
+              path="*"
+              element={<div className="page"><h2>Page not found</h2></div>}
+            />
+          </Routes>
+        </main>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
-
-export default App;

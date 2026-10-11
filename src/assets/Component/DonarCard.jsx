@@ -1,28 +1,11 @@
-function DonorCard({ donor, onDelete }) {
+export default function DonarCard({ donor }) {
   return (
-    <div className="card">
+    <article className="data-card">
+      <span className="eyebrow">{donor.donor_code}</span>
       <h3>{donor.name}</h3>
-
-      <p>
-        <strong>Email:</strong> {donor.email}
-      </p>
-
-      <p>
-        <strong>Phone:</strong> {donor.phone}
-      </p>
-
-      <p>
-        <strong>Address:</strong> {donor.address}
-      </p>
-
-      <button
-        className="delete-btn"
-        onClick={() => onDelete(donor.id)}
-      >
-        Delete
-      </button>
-    </div>
+      <p>{donor.email}</p>
+      <p>{donor.phone}</p>
+      <p>{donor.address}</p>
+    </article>
   );
 }
-
-export default DonorCard;

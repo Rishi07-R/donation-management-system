@@ -1,123 +1,93 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../supabase";
 
-function Dashboard() {
-
-  const [totalDonors, setTotalDonors] = useState(0);
-  const [totalDonations, setTotalDonations] = useState(0);
-  const [totalAmount, setTotalAmount] = useState(0);
+export default function Dashboard() {
+  const [stats, setStats] = useState({
+    donors: 0,
+    donations: 0,
+    total: 0
+  });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const fetchDashboardData = async () => {
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-    // Get donors
-    const { data: donors, error: donorError } =
-      await supabase
-        .from("donors")
-        .select("id");
+    const [donorsResult, donationsResult] = await Promise.all([
+      supabase.from("donors").select("id"),
+      supabase.from("donations").select("id, amount")
+    ]);
 
-    // Get donations
-    const { data: donations, error: donationError } =
-      await supabase
-        .from("donations")
-        .select("id, amount");
-
-    if (donorError) {
-      alert(
-        "Error loading donors: " +
-        donorError.message
+    if (donorsResult.error || donationsResult.error) {
+      setError(
+        donorsResult.error?.message ||
+        donationsResult.error?.message ||
+        "Unable to load dashboard."
       );
+      setLoading(false);
       return;
     }
 
-    if (donationError) {
-      alert(
-        "Error loading donations: " +
-        donationError.message
-      );
-      return;
-    }
+    const donations = donationsResult.data || [];
 
-    // Total donors
-    setTotalDonors(
-      donors ? donors.length : 0
-    );
-
-    // Total donations
-    setTotalDonations(
-      donations ? donations.length : 0
-    );
-
-    // Calculate total amount
-    const total = (donations || []).reduce(
-      (sum, donation) => {
-        return sum + Number(donation.amount || 0);
-      },
-      0
-    );
-
-    setTotalAmount(total);
+    setStats({
+      donors: donorsResult.data?.length || 0,
+      donations: donations.length,
+      total: donations.reduce(
+        (sum, donation) => sum + Number(donation.amount || 0),
+        0
+      )
+    });
 
     setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
   if (loading) {
-    return (
-      <div className="center">
-        <h2>Loading Dashboard...</h2>
-      </div>
-    );
+    return <div className="center">Loading dashboard...</div>;
   }
 
   return (
-    <div className="page">
-
-      <h2>Donation Dashboard</h2>
-
-      <div className="dashboard-grid">
-
-        {/* Total Donors */}
-        <div className="dashboard-card">
-
-          <h3>Total Donors</h3>
-
-          <p>
-            {totalDonors}
-          </p>
-
+    <section className="page">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">OVERVIEW</span>
+          <h1>Admin dashboard</h1>
+          <p>Summary of your donation management activity.</p>
         </div>
 
-        {/* Total Donations */}
-        <div className="dashboard-card">
-
-          <h3>Total Donations</h3>
-
-          <p>
-            {totalDonations}
-          </p>
-
-        </div>
-
-        {/* Total Amount */}
-        <div className="dashboard-card">
-
-          <h3>Total Amount</h3>
-
-          <p>
-            ₹{totalAmount.toFixed(2)}
-          </p>
-
-        </div>
-
+        <button className="button" onClick={loadDashboard}>
+          Refresh
+        </button>
       </div>
 
-    </div>
+      {error && <p className="error-message">{error}</p>}
+
+      <div className="stats-grid">
+        <article className="stat-card">
+          <span>Registered donors</span>
+          <strong>{stats.donors}</strong>
+        </article>
+
+        <article className="stat-card">
+          <span>Donation records</span>
+          <strong>{stats.donations}</strong>
+        </article>
+
+        <article className="stat-card">
+          <span>Total contributions</span>
+          <strong>
+            ₹{stats.total.toLocaleString("en-IN", {
+              maximumFractionDigits: 2
+            })}
+          </strong>
+        </article>
+      </div>
+    </section>
   );
 }
-
-export default Dashboard;
