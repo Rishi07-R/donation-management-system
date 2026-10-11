@@ -11,44 +11,33 @@ export default function Home() {
   });
   const [loadingStats, setLoadingStats] = useState(true);
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const [
-          { count: donorCount, error: donorError },
-          { data: donationData, error: donationError },
-        ] = await Promise.all([
-          supabase
-            .from("donors")
-            .select("*", { count: "exact", head: true }),
-          supabase
-            .from("donations")
-            .select("amount"),
-        ]);
 
-        if (donorError) throw donorError;
-        if (donationError) throw donationError;
+useEffect(() => {
+  async function fetchStats() {
+    try {
+      const { data, error } = await supabase.rpc(
+        "get_public_statistics"
+      );
 
-        const donations = donationData || [];
-        const totalAmount = donations.reduce(
-          (sum, donation) => sum + Number(donation.amount || 0),
-          0
-        );
-
-        setStats({
-          donors: donorCount || 0,
-          donations: donations.length,
-          amount: totalAmount,
-        });
-      } catch (error) {
-        console.error("Unable to load public statistics:", error.message);
-      } finally {
-        setLoadingStats(false);
+      if (error) {
+        throw error;
       }
-    }
 
-    fetchStats();
-  }, []);
+      setStats({
+        donors: Number(data?.donors_count ?? 0),
+        donations: Number(data?.donations_count ?? 0),
+        amount: Number(data?.total_raised ?? 0),
+      });
+    } catch (error) {
+      console.error("Unable to load public statistics:", error);
+    } finally {
+      setLoadingStats(false);
+    }
+  }
+
+  fetchStats();
+}, []);
+
 
   const formatAmount = (amount) =>
     new Intl.NumberFormat("en-IN", {
